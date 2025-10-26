@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гарантированные Сделки NFT (Анимировано)</title>
+    <!-- Загрузка Tailwind CSS для стилизации -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Устанавливаем шрифт Inter и красивый фон */
+        body { 
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top left, #1f2937, #0f172a); 
+        }
+        
+        /* Стили для скроллбара чата */
+        .chat-log::-webkit-scrollbar, .admin-log::-webkit-scrollbar { width: 8px; }
+        .chat-log::-webkit-scrollbar-thumb, .admin-log::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
+        .chat-log::-webkit-scrollbar-track, .admin-log::-webkit-scrollbar-track { background: #111827; }
+
+        /* Кастомный стиль для кнопки - более выраженный эффект */
+        .btn-primary {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+        }
+        .btn-primary:disabled {
+            background-color: #4338ca; /* Более темный синий при поиске */
+            cursor: not-allowed;
+        }
+
+        /* Анимация для появления сообщений в чате */
+        @keyframes fadeInSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message-animate {
+            animation: fadeInSlide 0.5s ease-out forwards;
+        }
+    </style>
+    <script>
+        // Имена 10 симулированных гарантов
+        const GUARANTORS = [
+            "Гарант 'AlphaTrade'", "Гарант 'SecureLink'", "Гарант 'CryptoFox'",
+            "Гарант 'TrustGuard'", "Гарант 'ValidatorX'", "Гарант 'EscrowPro'",
+            "Гарант 'DigitalWarden'", "Гарант 'NFTProtector'", "Гарант 'SafeKey'",
+            "Гарант 'Pavel_Garant'"
+        ];
+        
+        // Переменные состояния для UI
+        let isSearching = false;
+        let selectedGuarantor = '';
+        let transactionId = 0;
+
+        // --- Админ-Логин Константы ---
+        const ADMIN_LOGIN = 'usershivr';
+        const ADMIN_PASSWORD = '4441';
+        let isAdminLoggedIn = false; // Состояние входа
+
+        // --- Функции для UI и Логирования ---
+        
+        // Функция для обработки входа в Админ-Панель
+        function handleAdminLogin() {
+            const loginInput = document.getElementById('admin-login').value;
+            const passwordInput = document.getElementById('admin-password').value;
+            const loginForm = document.getElementById('login-form');
+            const adminLogView = document.getElementById('admin-log-view');
+            const adminHeader = document.getElementById('admin-header');
+            const loginMessage = document.getElementById('login-message');
+
+            if (loginInput === ADMIN_LOGIN && passwordInput === ADMIN_PASSWORD) {
+                isAdminLoggedIn = true;
+                loginForm.classList.add('hidden');
+                adminLogView.classList.remove('hidden');
+                adminHeader.textContent = `Гарант: ${ADMIN_LOGIN} (В сети)`;
+                adminHeader.classList.remove('text-amber-400');
+                adminHeader.classList.add('text-green-400');
+                loginMessage.textContent = "Успешный вход!";
+                loginMessage.classList.remove('text-red-400');
+                loginMessage.classList.add('text-green-400');
+                
+            } else {
+                loginMessage.textContent = "Неверный логин или пароль.";
+                loginMessage.classList.remove('text-green-400');
+                loginMessage.classList.add('text-red-400');
+            }
+        }
+
+        // Функция для записи сообщений в СЕКРЕТНЫЙ АДМИН-ЛОГ
+        function updateAdminLog(title, action) {
+            // Записываем только если администратор вошел в систему
+            if (!isAdminLoggedIn) return; 
+
+            const adminLog = document.getElementById('admin-log');
+            const stepElement = document.createElement('div');
+            stepElement.className = "p-2 bg-gray-900 rounded-lg mb-2 message-animate opacity-0";
+            stepElement.innerHTML = `
+                <p class="text-amber-400 text-xs font-bold">ТРАНЗАКЦИЯ #${transactionId}</p>
+                <p class="text-indigo-300 font-semibold mt-1">${title}</p>
+                <p class="text-gray-200 text-sm italic">${action}</p>
+            `;
+            adminLog.appendChild(stepElement);
+            // Запускаем анимацию и прокрутку
+            setTimeout(() => {
+                stepElement.style.opacity = 1;
+                adminLog.scrollTop = adminLog.scrollHeight;
+            }, 10);
+        }
+
+
+        // Функция для обновления прогресс-бара
+        function updateProgressBar(progress) {
+            const bar = document.getElementById('progress-bar-inner');
+            bar.style.width = `${progress}%`;
+        }
+
+        // Функция для добавления сообщений в ОСНОВНОЙ ЧАТ (публично)
+        function logMessage(text, isGuarantor = true) {
+            const chatLog = document.getElementById('chat-log');
+            const messageElement = document.createElement('div');
+            
+            const baseClasses = "mb-2 p-3 rounded-xl max-w-[85%] break-words message-animate opacity-0";
+            
+            if (isGuarantor) {
+                // Сообщения от Гаранта (слева)
+                messageElement.className = `${baseClasses} bg-gray-700 text-white self-start`;
+                messageElement.innerHTML = `<span class="font-semibold text-indigo-400">${selectedGuarantor || 'Система'}</span>: ${text}`;
+            } else {
+                // Сообщения-статусы (по центру)
+                messageElement.className = `${baseClasses} bg-indigo-900/50 text-indigo-200 text-sm italic mx-auto text-center`;
+                messageElement.textContent = text;
+            }
+
+            chatLog.appendChild(messageElement);
+            // Запускаем анимацию после добавления в DOM
+            setTimeout(() => {
+                messageElement.style.opacity = 1;
+                // Прокрутка вниз
+                chatLog.scrollTop = chatLog.scrollHeight;
+            }, 10);
+        }
+
+        // --- Основная Логика Сделки ---
+
+        // Основная функция для начала поиска и симуляции сделки
+        function startSearch() {
+            if (isSearching) return;
+
+            const buyerUsr = document.getElementById('buyer-usr').value.trim();
+            const sellerUsr = document.getElementById('seller-usr').value.trim();
+            const role = document.getElementById('user-role').value;
+            const nftLink = document.getElementById('nft-link').value.trim();
+
+            const statusText = document.getElementById('status-text');
+            const chatLog = document.getElementById('chat-log');
+            const startButton = document.getElementById('start-button');
+            const progressBarContainer = document.getElementById('progress-bar-container');
+            const chatInput = document.getElementById('chat-input-container');
+
+            // Проверка ввода
+            if (!buyerUsr || !sellerUsr || !nftLink) {
+                statusText.textContent = "Пожалуйста, заполните все поля.";
+                statusText.classList.remove('text-green-500', 'text-indigo-500');
+                statusText.classList.add('text-red-500');
+                return;
+            }
+
+            // Инициализация UI
+            transactionId = Math.floor(Math.random() * 90000) + 10000;
+            chatLog.innerHTML = '';
+            
+            // Если Админ вошел, очищаем лог
+            if (isAdminLoggedIn) {
+                document.getElementById('admin-log').innerHTML = '<p class="text-gray-400 italic">Секретные действия гаранта появятся здесь после начала сделки.</p>';
+            }
+
+            chatInput.classList.add('hidden'); // Скрываем поле ввода во время поиска
+            progressBarContainer.classList.remove('hidden'); // Показываем прогресс-бар
+            updateProgressBar(0);
+            
+            isSearching = true;
+            statusText.textContent = "Идет поиск и выбор надежного Гаранта (7 секунд)...";
+            statusText.classList.remove('text-red-500', 'text-green-500');
+            statusText.classList.add('text-indigo-500');
+            startButton.disabled = true;
+            startButton.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Поиск...`;
+
+            // Обновление прогресс-бара
+            const searchDuration = 7000;
+            const intervalTime = 100;
+            let elapsedTime = 0;
+
+            const progressInterval = setInterval(() => {
+                elapsedTime += intervalTime;
+                let progress = Math.min(100, (elapsedTime / searchDuration) * 100);
+                updateProgressBar(progress);
+
+                if (elapsedTime >= searchDuration) {
+                    clearInterval(progressInterval);
+                }
+            }, intervalTime);
+
+
+            // Шаг 1: Симуляция поиска гаранта (7 секунд)
+            setTimeout(() => {
+                const randomIndex = Math.floor(Math.random() * GUARANTORS.length);
+                selectedGuarantor = GUARANTORS[randomIndex];
+                isSearching = false;
+
+                progressBarContainer.classList.add('hidden'); // Скрываем прогресс-бар
+                chatInput.classList.remove('hidden'); // Показываем поле ввода чата
+
+                startButton.disabled = false;
+                startButton.textContent = "Начать Новую Сделку";
+
+                statusText.textContent = `Гарант найден! Сделку ведет: ${selectedGuarantor}`;
+                statusText.classList.remove('text-indigo-500', 'text-red-500');
+                statusText.classList.add('text-green-500');
+
+                // Шаг 2: Запуск симуляции чата сделки
+                simulateTransaction(buyerUsr, sellerUsr, role, nftLink);
+
+            }, searchDuration);
+        }
+
+        // Функция симуляции пошаговой сделки
+        function simulateTransaction(buyer, seller, role, nftLink) {
+            
+            // --- СТРУКТУРА ШАГОВ СДЕЛКИ ---
+            const steps = [
+                // Шаг 0: Инициализация
+                { delay: 1000, publicText: `Сделка #${transactionId} между ${seller} (Продавец) и ${buyer} (Покупатель) инициирована. Ваша роль: ${role === 'buyer' ? 'Покупатель' : 'Продавец'}.`, isGuarantor: false, adminAction: null },
+                { delay: 1500, publicText: `Приветствую! Я, ${selectedGuarantor}, ваш Гарант. Передайте мне все детали для проверки.`, isGuarantor: true, adminAction: null },
+                
+                // Шаг 1: Проверка NFT
+                { delay: 2500, publicText: `Начинаю проверку предмета: <a href="${nftLink}" target="_blank" class="text-indigo-300 underline hover:text-indigo-200 transition">${nftLink}</a>. Ожидайте подтверждения подлинности.`, isGuarantor: true, adminAction: null },
+                { delay: 3000, publicText: null, isGuarantor: false, adminAction: `Проверена метадата NFT ${nftLink}. Отправляю Продавцу (${seller}) запрос на верификацию владения. (Секретно)` },
+                { delay: 2000, publicText: null, isGuarantor: false, adminAction: `Подтверждено право собственности Продавца (${seller}). Статус: ✅ ОК.` },
+                { delay: 2000, publicText: `Статус: Проверка NFT завершена. Предмет подтвержден и готов к передаче.`, isGuarantor: false, adminAction: null },
+                
+                // Шаг 2: Внесение средств
+                { delay: 3500, publicText: `Покупатель (${buyer}), пожалуйста, отправьте сумму сделки на мой временный Эскроу-адрес (simulated_address_12345).`, isGuarantor: true, adminAction: null },
+                { delay: 4000, publicText: `Статус: Покупатель отправил средства. Ожидаем подтверждения в сети.`, isGuarantor: false, adminAction: null },
+                { delay: 2000, publicText: null, isGuarantor: false, adminAction: `Админ подтвердил 6/6 подтверждений сети для транзакции. Средства заблокированы на счете Гаранта.` },
+                { delay: 1500, publicText: `Подтверждаю получение средств. Деньги на безопасном Эскроу-счете.`, isGuarantor: true, adminAction: null },
+                
+                // Шаг 3: Передача NFT
+                { delay: 3500, publicText: `Продавец (${seller}), пожалуйста, отправьте NFT-предмет на адрес Покупателя: ${buyer}.`, isGuarantor: true, adminAction: null },
+                { delay: 4000, publicText: `Статус: Продавец отправил NFT. Ожидаем подтверждения получения Покупателем.`, isGuarantor: false, adminAction: null },
+                { delay: 3000, publicText: null, isGuarantor: false, adminAction: `Получено подтверждение от ${buyer}: NFT поступил на кошелек. Начинаю автоматический перевод средств Продавцу.` },
+                
+                // Шаг 4: Завершение
+                { delay: 1500, publicText: `Произвожу перевод средств Продавцу.`, isGuarantor: true, adminAction: null },
+                { delay: 3000, publicText: `Финальный Статус: Сделка #${transactionId} успешно завершена! Средства переведены, NFT передан.`, isGuarantor: false, adminAction: `Сделка завершена. Секретные данные удалены. ` }
+            ];
+
+            let totalDelay = 0;
+            steps.forEach(step => {
+                totalDelay += step.delay;
+                
+                setTimeout(() => {
+                    // Публичный лог
+                    if (step.publicText) {
+                        logMessage(step.publicText, step.isGuarantor);
+                    }
+                    // Секретный лог для Админа
+                    if (step.adminAction) {
+                        updateAdminLog(`Шаг ${steps.indexOf(step) + 1}`, step.adminAction);
+                    }
+                }, totalDelay);
+            });
+        }
+    </script>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-indigo-400 tracking-tight">NFT/Digital Эскроу Сервис</h1>
+            <p class="text-gray-400 mt-2">Безопасные сделки с помощью проверенных Гарантов.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Секция 1: Форма ввода данных сделки и Админ-Логин -->
+            <div class="lg:col-span-1 bg-gray-800 p-6 rounded-2xl shadow-2xl border border-indigo-700/50 h-fit transition duration-300 hover:border-indigo-500/80">
+                
+                <!-- Админ/Гарант Логин -->
+                <div id="admin-login-area" class="mb-6 p-4 bg-gray-700 rounded-xl border-4 border-amber-600/70 shadow-inner">
+                    <h3 class="text-xl font-bold text-amber-400 mb-3" id="admin-header">Вход для Гаранта</h3>
+                    
+                    <!-- Логин Форма (По умолчанию видна) -->
+                    <div id="login-form">
+                        <div class="space-y-3 mb-4">
+                            <div>
+                                <input type="text" id="admin-login" placeholder="Логин (usershivr)" class="w-full p-2 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400">
+                            </div>
+                            <div>
+                                <input type="password" id="admin-password" placeholder="Пароль (4441)" class="w-full p-2 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400">
+                            </div>
+                        </div>
+                        <button onclick="handleAdminLogin()" class="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition duration-200">
+                            Войти
+                        </button>
+                        <p id="login-message" class="text-sm mt-2 text-center text-red-400"></p>
+                    </div>
+                    
+                    <!-- Секретный Лог Админа (По умолчанию скрыт) -->
+                    <div id="admin-log-view" class="hidden">
+                        <h4 class="text-lg font-semibold text-indigo-300 mb-2">Секретный Лог Действий</h4>
+                        <div id="admin-log" class="admin-log h-40 overflow-y-auto space-y-2 text-sm bg-gray-800 p-2 rounded-lg">
+                            <p class="text-gray-400 italic">Секретные действия гаранта появятся здесь после начала сделки.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h2 class="text-2xl font-bold mb-4 text-indigo-300">Детали Сделки</h2>
+                
+                <div class="space-y-4">
+                    <!-- Поле: Роль -->
+                    <div>
+                        <label for="user-role" class="block text-sm font-medium text-gray-300 mb-1">Ваша Роль</label>
+                        <select id="user-role" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
+                            <option value="seller">Продавец (отправляю NFT)</option>
+                            <option value="buyer">Покупатель (отправляю деньги)</option>
+                        </select>
+                    </div>
+
+                    <!-- Поле: Юзернейм Покупателя -->
+                    <div>
+                        <label for="buyer-usr" class="block text-sm font-medium text-gray-300 mb-1">Юзернейм Покупателя</label>
+                        <input type="text" id="buyer-usr" placeholder="@user_buyer" required class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
+                    </div>
+
+                    <!-- Поле: Юзернейм Продавца -->
+                    <div>
+                        <label for="seller-usr" class="block text-sm font-medium text-gray-300 mb-1">Юзернейм Продавца</label>
+                        <input type="text" id="seller-usr" placeholder="@user_seller" required class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
+                    </div>
+
+                    <!-- Поле: Ссылка на NFT/Подарок -->
+                    <div>
+                        <label for="nft-link" class="block text-sm font-medium text-gray-300 mb-1">Ссылка или описание NFT/Подарка</label>
+                        <input type="url" id="nft-link" placeholder="https://t.me/nft/DeskCalendar-36074" required class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
+                    </div>
+
+                    <!-- Кнопка запуска поиска гаранта -->
+                    <button id="start-button" onclick="startSearch()" class="btn-primary w-full flex justify-center items-center py-3 mt-6 bg-indigo-600 text-white font-semibold rounded-lg transition duration-300">
+                        Найти Гаранта и Начать Сделку
+                    </button>
+                </div>
+            </div>
+
+            <!-- Секция 2: Лог Чата и Статус -->
+            <div class="lg:col-span-2 bg-gray-800 p-6 rounded-2xl shadow-2xl border border-indigo-700/50">
+                <h2 class="text-2xl font-bold mb-4 text-indigo-300">Статус Сделки и Чат</h2>
+                
+                <!-- Статус-текст -->
+                <p id="status-text" class="text-lg font-medium text-center py-3 mb-4 rounded-lg bg-gray-700/50 text-indigo-500 transition duration-500">
+                    Введите данные и нажмите "Найти Гаранта", чтобы начать.
+                </p>
+                
+                <!-- Контейнер прогресс-бара (скрыт по умолчанию) -->
+                <div id="progress-bar-container" class="hidden mb-4 p-2 bg-gray-700 rounded-full shadow-inner">
+                    <div class="h-4 bg-indigo-500 rounded-full transition-all duration-100 ease-linear" id="progress-bar-inner" style="width: 0%"></div>
+                </div>
+
+                <!-- Контейнер для лога чата -->
+                <div class="flex flex-col h-96 bg-gray-900 rounded-xl overflow-hidden shadow-inner-lg">
+                    <!-- Лог сообщений -->
+                    <div id="chat-log" class="chat-log flex flex-col space-y-3 p-4 flex-grow overflow-y-auto">
+                        <div class="mb-2 p-3 rounded-xl bg-indigo-900/50 text-indigo-200 text-sm italic mx-auto text-center max-w-[85%] message-animate opacity-100">
+                            Добро пожаловать! Здесь будет отображаться пошаговый процесс сделки, который ведет Гарант.
+                        </div>
+                    </div>
+
+                    <!-- Поле ввода чата (симуляция) -->
+                    <div id="chat-input-container" class="p-3 bg-gray-700 border-t border-gray-600 hidden">
+                        <div class="flex">
+                            <input type="text" placeholder="Вы: Чат с Гарантом (сейчас автоматизировано)..." disabled class="flex-grow p-3 bg-gray-600 text-gray-400 rounded-l-lg border-r-0 cursor-not-allowed">
+                            <button disabled class="bg-indigo-600 text-white p-3 rounded-r-lg opacity-70 cursor-not-allowed">
+                                Отправить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
